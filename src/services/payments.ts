@@ -147,7 +147,7 @@ class PaymentService {
     return inputs + footer;
   };
 
-  static getInitiatePaymentForm = (
+  static initiatePaymentForm = (
     paymentDetails: z.infer<typeof NewRecipientSchema>
   ) => {
     const paymentHashInfo = this.generatePaymentHashInfo(paymentDetails);
@@ -169,7 +169,10 @@ class PaymentService {
       hash: paymentHashInfo.hash,
     };
 
-    return this.generatePayUInitiatePaymentForm(params);
+    return {
+      form: this.generatePayUInitiatePaymentForm(params),
+      paymentHashInfo,
+    };
   };
 
   static getAuthHeaderForVPAValidation = (

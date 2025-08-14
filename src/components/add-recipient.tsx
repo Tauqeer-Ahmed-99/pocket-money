@@ -74,13 +74,15 @@ const postVpaVerification = async (vpa: string) => {
 
 function AddRecipient() {
   const [isOpen, setIsOpen] = useState(false);
+  const date = new Date();
+  date.setDate(new Date().getDate() - 1);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
     amount: "",
-    endDate: new Date().setDate(new Date().getDate() - 1),
+    endDate: date.toISOString().split("T")[0], // Default to yesterday
   });
   const [errors, setErrors] = useState<ReturnType<
     typeof z.treeifyError<z.infer<typeof NewRecipientSchema>>
@@ -140,40 +142,9 @@ function AddRecipient() {
     setErrors(null);
 
     postRecipient(data, {
-      onSuccess: async ({ data }, body) => {
+      onSuccess: async ({ data }) => {
         payUFormRef.current!.innerHTML = data.form;
         payUFormRef.current!.querySelector("form")?.submit();
-
-        // setPayuPaymentForm(form);
-        // const payuUrl = "https://test.payu.in/_payment";
-        // const form = document.createElement("form");
-        // form.method = "POST";
-        // form.action = payuUrl;
-        // const fields = {
-        //   key: process.env.NEXT_PUBLIC_PAYU_MERCHANT_KEY!,
-        //   txnid: data.paymentHashInfo.txnId,
-        //   amount: data.paymentHashInfo.siDetails.billingAmount,
-        //   productinfo: data.paymentHashInfo.productInfo,
-        //   firstname: body.firstName,
-        //   email: body.email,
-        //   phone: body.phone,
-        //   surl: `${window.origin}/api/payment/success`, // your success URL
-        //   furl: `${window.origin}/api/payment/fail`, // your failure URL
-        //   api_version: data.paymentHashInfo.apiVersion,
-        //   si: data.paymentHashInfo.si,
-        //   si_details: JSON.stringify(data.paymentHashInfo.siDetails),
-        //   hash: data.paymentHashInfo.hash,
-        // };
-        // Object.entries(fields).forEach(([k, v]) => {
-        //   const i = document.createElement("input");
-        //   i.type = "hidden";
-        //   i.name = k;
-        //   i.value = String(v ?? "");
-        //   form.appendChild(i);
-        // });
-
-        // document.body.appendChild(form);
-        // form.submit();
       },
       onError: (err) => {
         console.error("Error adding recipient:", err);

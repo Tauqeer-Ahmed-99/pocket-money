@@ -5,3 +5,9 @@ export const ResourceStatus = pgEnum("ResourceStatus", [
   "inactive",
   "archived",
 ]);
+
+export const TransactionStatus = pgEnum("TransactionStatus", [
+  "pending",
+  "success",
+  "error",
+]);

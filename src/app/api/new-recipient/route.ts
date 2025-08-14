@@ -32,10 +32,7 @@ export const POST = async (req: NextRequest) => {
 
     const paymentDetails = data;
 
-    // const paymentHashInfo =
-    //   PaymentService.generatePaymentHashInfo(paymentDetails);
-
-    const form = PaymentService.getInitiatePaymentForm(paymentDetails);
+    const { form } = PaymentService.initiatePaymentForm(paymentDetails);
 
     const response: APIResponse<{
       form: string;
