@@ -26,7 +26,6 @@ import {
   SidebarSpacer,
 } from "@/components/sidebar";
 import { SidebarLayout } from "@/components/sidebar-layout";
-import { getEvents } from "@/data";
 import { SignOutButton, useUser } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 import {

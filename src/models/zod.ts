@@ -18,9 +18,16 @@ export const NewRecipientSchema = z.object({
     .max(15, { error: "Phone must be at most 15 characters long." })
     .nonempty(),
   amount: z
-    .number({ error: "Amount must be a valid number." })
-    .min(10, { error: "Amount must be at least 10." })
-    .nonnegative({ error: "Amount must be a non-negative number." }),
+    .string({ error: "Amount must be a valid string." })
+    .regex(/^\d+(\.\d{1,2})?$/, {
+      error: "Amount must be a valid number format.",
+    })
+    .refine((val) => parseFloat(val) >= 10, {
+      error: "Amount must be at least 10.",
+    })
+    .refine((val) => parseFloat(val) >= 0, {
+      error: "Amount must be a non-negative number.",
+    }),
   endDate: z
     .date({ error: "End date must be a valid date." })
     .min(new Date(), { error: "End date must be in the future." })

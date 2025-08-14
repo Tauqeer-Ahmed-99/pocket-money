@@ -1,19 +1,24 @@
-import { Logo } from '@/app/logo'
-import { Button } from '@/components/button'
-import { Checkbox, CheckboxField } from '@/components/checkbox'
-import { Field, Label } from '@/components/fieldset'
-import { Heading } from '@/components/heading'
-import { Input } from '@/components/input'
-import { Strong, Text, TextLink } from '@/components/text'
-import type { Metadata } from 'next'
+import { Logo } from "@/app/logo";
+import { Button } from "@/components/button";
+import { Checkbox, CheckboxField } from "@/components/checkbox";
+import { Field, Label } from "@/components/fieldset";
+import { Heading } from "@/components/heading";
+import { Input } from "@/components/input";
+import { Strong, Text, TextLink } from "@/components/text";
+import { SignInButton } from "@clerk/nextjs";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: 'Login',
-}
+  title: "Login",
+};
 
 export default function Login() {
   return (
-    <form action="" method="POST" className="grid w-full max-w-sm grid-cols-1 gap-8">
+    <form
+      action=""
+      method="POST"
+      className="grid w-full max-w-sm grid-cols-1 gap-8"
+    >
       <Logo className="h-6 text-zinc-950 dark:text-white forced-colors:text-[CanvasText]" />
       <Heading>Sign in to your account</Heading>
       <Field>
@@ -35,15 +40,17 @@ export default function Login() {
           </TextLink>
         </Text>
       </div>
-      <Button type="submit" className="w-full">
-        Login
-      </Button>
+
+      <SignInButton>
+        <Button className="w-full cursor-pointer">Login</Button>
+      </SignInButton>
+
       <Text>
-        Don’t have an account?{' '}
+        Don’t have an account?{" "}
         <TextLink href="/register">
           <Strong>Sign up</Strong>
         </TextLink>
       </Text>
     </form>
-  )
+  );
 }

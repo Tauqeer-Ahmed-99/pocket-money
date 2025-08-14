@@ -24,3 +24,15 @@ export type APIResponse<T = undefined> = {
   message: string;
   data: T;
 };
+
+export class APIError extends Error {
+  status: HTTPStatus;
+  data: any;
+
+  constructor(message: string, status: HTTPStatus, data: any) {
+    super(message);
+    this.status = status;
+    this.data = data;
+    this.name = "APIError";
+  }
+}
