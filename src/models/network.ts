@@ -18,21 +18,33 @@ export enum APIStatus {
   Error = "error",
 }
 
+export enum ErrorCode {
+  Profile_Not_Set = "Profile_Not_Set",
+}
+
 export type APIResponse<T = undefined> = {
   status: APIStatus;
   statusCode: HTTPStatus;
   message: string;
+  errorCode?: ErrorCode;
   data: T;
 };
 
 export class APIError extends Error {
   status: HTTPStatus;
   data: any;
+  errorCode?: ErrorCode;
 
-  constructor(message: string, status: HTTPStatus, data: any) {
+  constructor(
+    message: string,
+    status: HTTPStatus,
+    data: any,
+    errorCode?: ErrorCode
+  ) {
     super(message);
     this.status = status;
     this.data = data;
     this.name = "APIError";
+    this.errorCode = errorCode;
   }
 }

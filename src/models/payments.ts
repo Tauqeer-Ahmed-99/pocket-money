@@ -8,6 +8,7 @@ export type StandingInstructionsDetails = {
 };
 
 export type PaymentHashInfo = {
+  key: string;
   txnId: string;
   siDetails: StandingInstructionsDetails;
   hash: string;

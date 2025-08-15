@@ -1,16 +1,16 @@
 import { Stat } from "@/app/stat";
-import { Avatar } from "@/components/avatar";
+import SetupProfileBanner from "@/components/setup-profile-banner";
 import { Heading, Subheading } from "@/components/heading";
 import { Select } from "@/components/select";
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/table";
 import { currentUser } from "@clerk/nextjs/server";
+import UsersService from "@/services/users";
 
 const getGreeting = () => {
   const hours = new Date().getHours();
@@ -26,11 +26,18 @@ export default async function Home() {
     return <div>Please log in to view your dashboard.</div>;
   }
 
+  const userProfile = await UsersService.getUserProfile(user.id);
+
+  const isProfileNotSetup = !Boolean(userProfile);
+
   return (
     <>
       <Heading>
         {getGreeting()}, {user.firstName} 👋
       </Heading>
+
+      {isProfileNotSetup && <SetupProfileBanner />}
+
       <div className="mt-8 flex items-end justify-between">
         <Subheading>Overview</Subheading>
         <div>

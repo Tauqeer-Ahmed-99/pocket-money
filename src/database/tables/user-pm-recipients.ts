@@ -2,11 +2,14 @@ import { pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { ResourceStatus } from "../enums";
 import { Recipients } from "./recipients";
 import { relations } from "drizzle-orm";
+import { Users } from "./users";
 
-// UserPMRecipients => Recipients => PocketMoneys
+// Users => UserPMRecipients => Recipients => PocketMoneys
 
 export const UserPMRecipients = pgTable("user_pm_recipients", {
-  userId: text("userId").notNull(),
+  userId: varchar("userId", { length: 255 })
+    .notNull()
+    .references(() => Users.userId),
   recipientId: uuid("recipientId")
     .notNull()
     .references(() => Recipients.recipientId),
@@ -25,6 +28,10 @@ export const UserPMRecipientsRelations = relations(
     recipient: one(Recipients, {
       fields: [UserPMRecipients.recipientId],
       references: [Recipients.recipientId],
+    }),
+    user: one(Users, {
+      fields: [UserPMRecipients.userId],
+      references: [Users.userId],
     }),
   })
 );

@@ -13,6 +13,7 @@ import { Input, InputGroup } from "@/components/input";
 import { APIError, APIResponse } from "@/models/network";
 import { PaymentHashInfo, ValidateVPAResponse } from "@/models/payments";
 import { NewRecipientSchema } from "@/models/zod";
+import { useUser } from "@clerk/nextjs";
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/16/solid";
 import {
   UserCircleIcon,
@@ -36,7 +37,9 @@ const postNewRecipient = async (body: z.infer<typeof NewRecipientSchema>) => {
   });
 
   if (!response.ok) {
-    const errorData: APIResponse<unknown> = await response.json();
+    const errorData: APIResponse<ReturnType<
+      typeof z.treeifyError<z.infer<typeof NewRecipientSchema>>
+    > | null> = await response.json();
     const error = new APIError(
       errorData.message,
       response.status,
@@ -93,6 +96,8 @@ function AddRecipient() {
   const [vpaError, setVpaError] = useState<string | null>(null);
   const payUFormRef = useRef<HTMLDivElement>(null);
 
+  const { user } = useUser();
+
   const { mutate: postRecipient, isPending: isAddingRecipient } = useMutation({
     mutationKey: ["add-recipient"],
     mutationFn: postNewRecipient,
@@ -128,10 +133,18 @@ function AddRecipient() {
   };
 
   const addRecipient = () => {
+    if (!user) {
+      return;
+    }
+
     const { success, error, data } = NewRecipientSchema.safeParse({
       ...formData,
       amount: parseFloat(formData.amount).toFixed(2),
       endDate: new Date(formData.endDate),
+      customerFirstName: user.firstName || "",
+      customerLastName: user.lastName || "",
+      customerEmail: user.emailAddresses[0]?.emailAddress || "",
+      customerPhone: user.phoneNumbers[0]?.phoneNumber || "",
     });
 
     if (!success) {
@@ -148,7 +161,7 @@ function AddRecipient() {
       },
       onError: (err) => {
         console.error("Error adding recipient:", err);
-        setErrors((err as any).data);
+        setErrors((err as APIError).data);
       },
     });
   };

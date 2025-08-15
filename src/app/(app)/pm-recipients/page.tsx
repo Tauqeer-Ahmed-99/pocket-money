@@ -1,6 +1,5 @@
 import AddRecipient from "@/components/add-recipient";
 import { Badge } from "@/components/badge";
-import { Button } from "@/components/button";
 import { Divider } from "@/components/divider";
 import {
   Dropdown,
@@ -12,7 +11,10 @@ import { Heading } from "@/components/heading";
 import { Input, InputGroup } from "@/components/input";
 import { Link } from "@/components/link";
 import { Select } from "@/components/select";
+import SetupProfileBanner from "@/components/setup-profile-banner";
 import { getEvents } from "@/data";
+import UsersService from "@/services/users";
+import { currentUser } from "@clerk/nextjs/server";
 import {
   EllipsisVerticalIcon,
   MagnifyingGlassIcon,
@@ -26,11 +28,22 @@ export const metadata: Metadata = {
 export default async function Events() {
   let events = await getEvents();
 
+  const user = await currentUser();
+
+  if (!user) {
+    return <div>Please log in to view your dashboard.</div>;
+  }
+
+  const userProfile = await UsersService.getUserProfile(user.id);
+
+  const isProfileNotSetup = !Boolean(userProfile);
+
   return (
     <>
+      <Heading>Pocket Money Recipients</Heading>
+      {isProfileNotSetup && <SetupProfileBanner />}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="max-sm:w-full sm:flex-1">
-          <Heading>Pocket Money Recipients</Heading>
           <div className="mt-4 flex max-w-xl gap-4">
             <div className="flex-1">
               <InputGroup>

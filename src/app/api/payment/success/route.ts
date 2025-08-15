@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const POST = async (req: NextRequest) => {
   try {
     const data = await req.formData();
-    console.log("Payment failed:", data);
+    console.log("Payment Success:", data);
 
     return NextResponse.redirect("http://localhost:3000/pm-recipients", 303);
   } catch (error) {

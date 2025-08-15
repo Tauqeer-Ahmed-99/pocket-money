@@ -9,6 +9,9 @@ import {
 import { NewRecipientSchema } from "@/models/zod";
 import z from "zod";
 import PayU from "./payu";
+import RecipientsDAL from "@/database/access-layer/recipients-dal";
+import { InferInsertModel } from "drizzle-orm";
+import { Transactions } from "@/database/schema";
 
 if (!process.env.PAYU_MERCHANT_KEY) {
   throw new Error(
@@ -95,6 +98,7 @@ class PaymentService {
     const hash = this.sha512(hashString);
 
     return {
+      key: KEY,
       hash,
       txnId,
       productInfo,
@@ -147,8 +151,9 @@ class PaymentService {
     return inputs + footer;
   };
 
-  static initiatePaymentForm = (
-    paymentDetails: z.infer<typeof NewRecipientSchema>
+  static initiatePaymentForm = async (
+    paymentDetails: z.infer<typeof NewRecipientSchema>,
+    createdBy: string
   ) => {
     const paymentHashInfo = this.generatePaymentHashInfo(paymentDetails);
     const params = {
@@ -169,9 +174,60 @@ class PaymentService {
       hash: paymentHashInfo.hash,
     };
 
+    const form = this.generatePayUInitiatePaymentForm(params);
+
+    const recipientData = {
+      firstname: paymentDetails.firstName,
+      lastname: paymentDetails.lastName,
+      email: paymentDetails.email,
+      phone: paymentDetails.phone,
+      createdBy,
+    };
+
+    const pocketMoneyDetails = {
+      amount: paymentDetails.amount,
+      createdBy,
+    };
+
+    const transactionDetails: Omit<
+      InferInsertModel<typeof Transactions>,
+      "pocketMoneyId"
+    > = {
+      paymentGatewayTxnId: paymentHashInfo.txnId,
+      productinfo: paymentHashInfo.productInfo,
+      amount: paymentDetails.amount,
+      firstname: "", // This must be customer info the one who is paying
+      lastname: "",
+      email: "",
+      phone: "",
+      udf1: paymentHashInfo.udfDetails.udf1 || "",
+      udf2: paymentHashInfo.udfDetails.udf2 || "",
+      udf3: paymentHashInfo.udfDetails.udf3 || "",
+      udf4: paymentHashInfo.udfDetails.udf4 || "",
+      udf5: paymentHashInfo.udfDetails.udf5 || "",
+      udf6: paymentHashInfo.udfDetails.udf6 || "",
+      udf7: paymentHashInfo.udfDetails.udf7 || "",
+      udf8: paymentHashInfo.udfDetails.udf8 || "",
+      udf9: paymentHashInfo.udfDetails.udf9 || "",
+      udf10: paymentHashInfo.udfDetails.udf10 || "",
+      key: PayU.Client.credes.key,
+      hash: paymentHashInfo.hash,
+      createdBy,
+    };
+
+    const { recipient, pocketMoney, transaction } =
+      await RecipientsDAL.createRecipientWithPocketMoney(
+        recipientData,
+        pocketMoneyDetails,
+        transactionDetails
+      );
+
     return {
-      form: this.generatePayUInitiatePaymentForm(params),
+      form,
       paymentHashInfo,
+      recipient,
+      pocketMoney,
+      transaction,
     };
   };
 
