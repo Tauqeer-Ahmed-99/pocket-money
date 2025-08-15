@@ -4,7 +4,7 @@ import { relations } from "drizzle-orm";
 import { UserPMRecipients } from "./user-pm-recipients";
 import { PocketMoneys } from "./pocket-moneys";
 
-// Users => UserPMRecipients => Recipients => PocketMoneys
+// Users => UserPMRecipients => Recipients => PocketMoneys => Transactions
 
 export const Recipients = pgTable("recipients", {
   recipientId: uuid("recipientId").primaryKey().defaultRandom(),

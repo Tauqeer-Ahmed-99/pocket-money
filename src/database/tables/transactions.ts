@@ -1,4 +1,5 @@
 import {
+  boolean,
   date,
   decimal,
   pgTable,
@@ -10,6 +11,8 @@ import {
 import { ResourceStatus, TransactionStatus } from "../enums";
 import { PocketMoneys } from "./pocket-moneys";
 import { relations } from "drizzle-orm";
+
+// Users => UserPMRecipients => Recipients => PocketMoneys => Transactions
 
 export const Transactions = pgTable("transactions", {
   transactionId: uuid("transactionId").primaryKey().defaultRandom(),
@@ -63,10 +66,16 @@ export const Transactions = pgTable("transactions", {
   payment_source: varchar("payment_source", { length: 255 }),
   pa_name: varchar("pa_name", { length: 255 }),
   PG_TYPE: varchar("PG_TYPE", { length: 255 }),
-  bank_ref_number: varchar("bank_ref_number", { length: 255 }),
+  bank_ref_num: varchar("bank_ref_num", { length: 255 }),
   bankcode: varchar("bankcode", { length: 255 }),
   error: varchar("error", { length: 255 }),
   error_Message: varchar("error_Message", { length: 255 }),
+
+  receivedHash: text("receivedHash"),
+  reverseHash: text("reverseHash"),
+  isValidTxn: boolean("isValidTxn"),
+  finalStatus: varchar("finalStatus", { length: 255 }),
+  finalErrorMessage: varchar("finalErrorMessage", { length: 255 }),
 
   status: ResourceStatus("status").default("active").notNull(),
   createdAt: timestamp("createdAt").defaultNow(),

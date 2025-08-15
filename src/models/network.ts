@@ -19,7 +19,9 @@ export enum APIStatus {
 }
 
 export enum ErrorCode {
-  Profile_Not_Set = "Profile_Not_Set",
+  ProfileNotSet = "ProfileNotSet",
+  InvalidVPA = "InvalidVPA",
+  ProcessingPaymentFailed = "ProcessingPaymentFailed",
 }
 
 export type APIResponse<T = undefined> = {

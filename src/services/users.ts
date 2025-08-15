@@ -1,4 +1,4 @@
-import UsersDAL from "@/database/access-layer/users";
+import UsersDAL from "@/database/access-layer/users-dal";
 import { Users } from "@/database/schema";
 import { InferSelectModel } from "drizzle-orm";
 

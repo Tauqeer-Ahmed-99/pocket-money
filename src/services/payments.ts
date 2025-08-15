@@ -1,10 +1,11 @@
-import crypto from "crypto";
+import crypto, { Verify } from "crypto";
 import {
   InitiatePaymentParams,
   PaymentHashInfo,
   StandingInstructionsDetails,
   ValidateVPARequestParams,
   ValidateVPAResponse,
+  VerifyPaymentResponse,
 } from "@/models/payments";
 import { NewRecipientSchema } from "@/models/zod";
 import z from "zod";
@@ -12,6 +13,9 @@ import PayU from "./payu";
 import RecipientsDAL from "@/database/access-layer/recipients-dal";
 import { InferInsertModel } from "drizzle-orm";
 import { Transactions } from "@/database/schema";
+import UsersService from "./users";
+import { start } from "repl";
+import TransactionsService from "./transactions";
 
 if (!process.env.PAYU_MERCHANT_KEY) {
   throw new Error(
@@ -46,20 +50,28 @@ class PaymentService {
   };
 
   static generatePaymentHashInfo = (
-    paymentDetails: z.infer<typeof NewRecipientSchema>
+    paymentDetails: z.infer<typeof NewRecipientSchema> & {
+      vpa: string;
+      startDate: Date;
+    },
+    reverseHash = false,
+    status?: string,
+    transactionId?: string
   ): PaymentHashInfo => {
-    const txnId = this.generateTxnId();
+    const txnId = reverseHash
+      ? (transactionId as string)
+      : this.generateTxnId();
     const amount = parseFloat(paymentDetails.amount).toFixed(2);
     const productInfo = `Pocket Money - ${"MONTHLY"} - ${
       paymentDetails.firstName
     } ${paymentDetails.lastName}`;
-    const firstName = paymentDetails.firstName;
-    const email = paymentDetails.email;
-    const udf1 = paymentDetails.phone || "";
-    const udf2 = "";
-    const udf3 = "";
-    const udf4 = "";
-    const udf5 = "";
+    const firstName = paymentDetails.customerFirstName;
+    const email = paymentDetails.customerEmail;
+    const udf1 = paymentDetails.firstName || "";
+    const udf2 = paymentDetails.lastName || "";
+    const udf3 = paymentDetails.email || "";
+    const udf4 = paymentDetails.phone || "";
+    const udf5 = paymentDetails.vpa || ""; // VPA is used as udf5
     const udf6 = ""; // empty
     const udf7 = ""; // empty
     const udf8 = ""; // empty
@@ -70,11 +82,11 @@ class PaymentService {
       billingCurrency: "INR",
       billingCycle: "MONTHLY",
       billingInterval: 1,
-      paymentStartDate: new Date().toISOString().split("T")[0],
+      paymentStartDate: paymentDetails.startDate.toISOString().split("T")[0],
       paymentEndDate: paymentDetails.endDate.toISOString().split("T")[0],
     };
 
-    const hashString = [
+    const hashStringContent = [
       KEY,
       txnId,
       amount,
@@ -91,9 +103,13 @@ class PaymentService {
       udf8,
       udf9,
       udf10,
-      JSON.stringify(siDetails),
+      reverseHash ? status : JSON.stringify(siDetails),
       SALT,
-    ].join("|");
+    ];
+
+    const hashString = reverseHash
+      ? hashStringContent.reverse().join("|")
+      : hashStringContent.join("|");
 
     const hash = this.sha512(hashString);
 
@@ -152,20 +168,36 @@ class PaymentService {
   };
 
   static initiatePaymentForm = async (
-    paymentDetails: z.infer<typeof NewRecipientSchema>,
-    createdBy: string
+    paymentDetails: z.infer<typeof NewRecipientSchema> & {
+      vpa: string;
+      startDate: Date;
+    },
+    userId: string
   ) => {
     const paymentHashInfo = this.generatePaymentHashInfo(paymentDetails);
+
+    const userProfile = await UsersService.getUserProfile(userId); // to get user address details
+
     const params = {
       key: PayU.Client.credes.key,
       txnid: paymentHashInfo.txnId,
       amount: paymentHashInfo.siDetails.billingAmount,
       productinfo: paymentHashInfo.productInfo,
-      firstname: paymentDetails.firstName,
-      lastname: paymentDetails.lastName,
-      email: paymentDetails.email,
-      phone: paymentDetails.phone,
+      firstname: paymentDetails.customerFirstName,
+      lastname: paymentDetails.customerLastName,
+      address1: userProfile?.addressLine1 || "",
+      address2: userProfile?.addressLine2 || "",
+      city: userProfile?.city || "",
+      state: userProfile?.region || "",
+      country: userProfile?.country || "",
+      zipcode: userProfile?.postalCode || "",
+      email: paymentDetails.customerEmail,
+      phone: paymentDetails.customerPhone,
       udf1: paymentHashInfo.udfDetails.udf1,
+      udf2: paymentHashInfo.udfDetails.udf2,
+      udf3: paymentHashInfo.udfDetails.udf3,
+      udf4: paymentHashInfo.udfDetails.udf4,
+      udf5: paymentHashInfo.udfDetails.udf5,
       surl: `${APP_URL}/api/payment/success`,
       furl: `${APP_URL}/api/payment/failure`,
       api_version: "7" as "7",
@@ -181,12 +213,14 @@ class PaymentService {
       lastname: paymentDetails.lastName,
       email: paymentDetails.email,
       phone: paymentDetails.phone,
-      createdBy,
+      createdBy: userId,
     };
 
     const pocketMoneyDetails = {
       amount: paymentDetails.amount,
-      createdBy,
+      startDate: paymentDetails.startDate,
+      endDate: paymentDetails.endDate,
+      createdBy: userId,
     };
 
     const transactionDetails: Omit<
@@ -196,10 +230,16 @@ class PaymentService {
       paymentGatewayTxnId: paymentHashInfo.txnId,
       productinfo: paymentHashInfo.productInfo,
       amount: paymentDetails.amount,
-      firstname: "", // This must be customer info the one who is paying
-      lastname: "",
-      email: "",
-      phone: "",
+      firstname: paymentDetails.customerFirstName,
+      lastname: paymentDetails.customerLastName,
+      address1: userProfile?.addressLine1 || "",
+      address2: userProfile?.addressLine2 || "",
+      city: userProfile?.city || "",
+      state: userProfile?.region || "",
+      country: userProfile?.country || "",
+      zipcode: userProfile?.postalCode || "",
+      email: paymentDetails.customerEmail,
+      phone: paymentDetails.customerPhone,
       udf1: paymentHashInfo.udfDetails.udf1 || "",
       udf2: paymentHashInfo.udfDetails.udf2 || "",
       udf3: paymentHashInfo.udfDetails.udf3 || "",
@@ -212,14 +252,15 @@ class PaymentService {
       udf10: paymentHashInfo.udfDetails.udf10 || "",
       key: PayU.Client.credes.key,
       hash: paymentHashInfo.hash,
-      createdBy,
+      createdBy: userId,
     };
 
     const { recipient, pocketMoney, transaction } =
       await RecipientsDAL.createRecipientWithPocketMoney(
         recipientData,
         pocketMoneyDetails,
-        transactionDetails
+        transactionDetails,
+        userId
       );
 
     return {
@@ -312,6 +353,131 @@ class PaymentService {
 
   static validateVPA = async (vpa: string): Promise<ValidateVPAResponse> => {
     return PayU.Client.validateVPA(vpa);
+  };
+
+  static verifyPayment = async (
+    txnId: string
+  ): Promise<VerifyPaymentResponse> => {
+    return PayU.Client.verifyPayment(txnId);
+  };
+
+  static validatePayment = async (
+    txnId: string,
+    txnDetails: Partial<InferInsertModel<typeof Transactions>>,
+    receivedReverseHash: string
+  ): Promise<URL> => {
+    const [_, transaction, verifyPaymentResult] = await Promise.all([
+      TransactionsService.updateTransaction(txnId, txnDetails),
+      TransactionsService.getTransaction(txnId),
+      PaymentService.verifyPayment(txnId),
+    ]);
+
+    const paymentDetails: z.infer<typeof NewRecipientSchema> & {
+      vpa: string;
+      startDate: Date;
+    } = {
+      amount: transaction?.amount || "",
+      firstName: transaction?.udf1 || "",
+      lastName: transaction?.udf2 || "",
+      email: transaction?.udf3 || "",
+      phone: transaction?.udf4 || "",
+      vpa: transaction?.udf5 || "",
+      customerEmail: transaction?.email || "",
+      customerFirstName: transaction?.firstname || "",
+      customerLastName: transaction?.lastname || "",
+      customerPhone: transaction?.phone || "",
+      startDate: transaction?.pocketMoney.startDate as Date,
+      endDate: transaction?.pocketMoney.endDate as Date,
+    };
+
+    const generateReverseHash = true;
+    const { hash: reverseHash } = PaymentService.generatePaymentHashInfo(
+      paymentDetails,
+      generateReverseHash,
+      txnDetails.txnStatus,
+      txnId
+    );
+
+    const isValidTxn = receivedReverseHash === reverseHash;
+
+    if (verifyPaymentResult.status === 0) {
+      const url = new URL(`${APP_URL}/payment/process/error`);
+      url.searchParams.append("txnStatus", "failed");
+      url.searchParams.append(
+        "message",
+        "Payment processing failed, verification failed."
+      );
+
+      await TransactionsService.updateFinalStatus(
+        txnId,
+        receivedReverseHash,
+        reverseHash,
+        isValidTxn,
+        "error",
+        "Payment processing failed, verification failed."
+      );
+
+      return url;
+    }
+
+    if (!isValidTxn) {
+      const url = new URL(`${APP_URL}/payment/process/error`);
+
+      url.searchParams.append("txnStatus", "failed");
+      url.searchParams.append(
+        "message",
+        "Payment processing failed, invalid transaction."
+      );
+
+      await TransactionsService.updateFinalStatus(
+        txnId,
+        receivedReverseHash,
+        reverseHash,
+        isValidTxn,
+        "error",
+        "Payment processing failed, invalid transaction."
+      );
+
+      return url;
+    }
+
+    if (
+      !transaction ||
+      !transaction.pocketMoneyId ||
+      !transaction.pocketMoney ||
+      !transaction.pocketMoney.recipientId
+    ) {
+      const url = new URL(`${APP_URL}/payment/process/error`);
+
+      url.searchParams.append("txnStatus", "error");
+      url.searchParams.append(
+        "message",
+        "Payment processing failed, transaction details not found"
+      );
+
+      await TransactionsService.updateFinalStatus(
+        txnId,
+        receivedReverseHash,
+        reverseHash,
+        isValidTxn,
+        "error",
+        "Payment processing failed, transaction details not found"
+      );
+
+      return url;
+    }
+
+    const url = new URL(
+      `${APP_URL}/pm-recipients/${transaction.pocketMoney.recipientId}/${transaction.pocketMoneyId}`
+    );
+
+    const txnStatus = txnDetails.txnStatus ?? "";
+    const message = txnDetails.field9 ?? "";
+
+    url.searchParams.append("txnStatus", txnStatus);
+    url.searchParams.append("message", message);
+
+    return url;
   };
 }
 

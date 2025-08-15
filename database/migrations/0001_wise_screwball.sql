@@ -1,0 +1,1 @@
+ALTER TABLE "transactions" RENAME COLUMN "bank_ref_number" TO "bank_ref_num";

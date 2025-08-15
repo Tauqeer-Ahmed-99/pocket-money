@@ -57,3 +57,48 @@ export type ValidateVPAResponse = {
   isAutoPayBankValid: string;
   payerAccountName: string;
 };
+
+export type VerifyPaymentRequestParams = {
+  txnId: string;
+};
+
+export type VerifyPaymentResponse = {
+  status: 0 | 1;
+  msg: string;
+  request_id: string;
+  bank_ref_num: string;
+  transaction_details: {
+    mihpayid: string;
+    request_id: string;
+    bankrefnum: string;
+    amt: string;
+    transaction_amount: string;
+    productinfo: string;
+    firstname: string;
+    bankcode: string;
+    udf1: string;
+    udf2: string;
+    udf3: string;
+    udf4: string;
+    udf5: string;
+    field2: string;
+    field5: string;
+    field3: string;
+    field9: string;
+    error_code: string;
+    net_amount_debit: string;
+    added_on: string;
+    payment_source: string;
+    card_type: string;
+    error_Message: string;
+    disc: string;
+    Mode: string;
+    PG_TYPE: string;
+    card_no: string;
+    name_on_card: string;
+    status: string;
+    unmappedstatus: string;
+    Merchant_UTR: string;
+    Settled_at: string;
+  };
+};

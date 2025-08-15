@@ -10,7 +10,7 @@ import { Recipients } from "./recipients";
 import { relations } from "drizzle-orm";
 import { Transactions } from "./transactions";
 
-// Users => UserPMRecipients => Recipients => PocketMoneys
+// Users => UserPMRecipients => Recipients => PocketMoneys => Transactions
 
 export const PocketMoneys = pgTable("pocket_moneys", {
   pocketMoneyId: uuid("pocketMoneyId").primaryKey().defaultRandom(),
@@ -19,6 +19,8 @@ export const PocketMoneys = pgTable("pocket_moneys", {
     .references(() => Recipients.recipientId),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: ResourceStatus("status").default("active").notNull(),
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate").notNull(),
   createdAt: timestamp("createdAt").defaultNow(),
   createdBy: varchar("createdBy", { length: 255 }).notNull(),
   updatedAt: timestamp("updatedAt")

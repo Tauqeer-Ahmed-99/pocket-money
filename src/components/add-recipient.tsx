@@ -10,70 +10,22 @@ import {
 } from "@/components/dialog";
 import { ErrorMessage, Field, Label } from "@/components/fieldset";
 import { Input, InputGroup } from "@/components/input";
-import { APIError, APIResponse } from "@/models/network";
-import { PaymentHashInfo, ValidateVPAResponse } from "@/models/payments";
+import useAddRecipient from "@/hooks/useAddRecipient";
+import useProfile from "@/hooks/useProfile";
+import useVerifyVPA from "@/hooks/useVerifyVPA";
+import { APIError, ErrorCode } from "@/models/network";
 import { NewRecipientSchema } from "@/models/zod";
-import { useUser } from "@clerk/nextjs";
 import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/16/solid";
 import {
-  UserCircleIcon,
-  CurrencyRupeeIcon,
-  AtSymbolIcon,
-  PhoneIcon,
-  NoSymbolIcon,
   ArrowPathIcon,
+  AtSymbolIcon,
+  CurrencyRupeeIcon,
+  NoSymbolIcon,
+  PhoneIcon,
+  UserCircleIcon,
 } from "@heroicons/react/24/solid";
-import { useMutation } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import z from "zod";
-
-const postNewRecipient = async (body: z.infer<typeof NewRecipientSchema>) => {
-  const response = await fetch("/api/new-recipient", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorData: APIResponse<ReturnType<
-      typeof z.treeifyError<z.infer<typeof NewRecipientSchema>>
-    > | null> = await response.json();
-    const error = new APIError(
-      errorData.message,
-      response.status,
-      errorData.data
-    );
-    throw error;
-  }
-
-  return response.json() as Promise<
-    APIResponse<{ form: string; paymentHashInfo: PaymentHashInfo }>
-  >;
-};
-
-const postVpaVerification = async (vpa: string) => {
-  const response = await fetch("/api/payment/verify-vpa", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ vpa }),
-  });
-
-  if (!response.ok) {
-    const errorData: APIResponse<ValidateVPAResponse> = await response.json();
-    const error = new APIError(
-      errorData.message,
-      response.status,
-      errorData.data
-    );
-    throw error;
-  }
-
-  return response.json() as Promise<APIResponse<ValidateVPAResponse>>;
-};
 
 function AddRecipient() {
   const [isOpen, setIsOpen] = useState(false);
@@ -96,17 +48,12 @@ function AddRecipient() {
   const [vpaError, setVpaError] = useState<string | null>(null);
   const payUFormRef = useRef<HTMLDivElement>(null);
 
-  const { user } = useUser();
+  const { data: userProfile } = useProfile();
 
-  const { mutate: postRecipient, isPending: isAddingRecipient } = useMutation({
-    mutationKey: ["add-recipient"],
-    mutationFn: postNewRecipient,
-  });
+  const { mutate: postRecipient, isPending: isAddingRecipient } =
+    useAddRecipient();
 
-  const { mutate: verifyVpa, isPending: isVerifyingVpa } = useMutation({
-    mutationKey: ["verify-vpa"],
-    mutationFn: postVpaVerification,
-  });
+  const { mutate: verifyVpa, isPending: isVerifyingVpa } = useVerifyVPA();
 
   const close = () => {
     setIsOpen(false);
@@ -133,7 +80,7 @@ function AddRecipient() {
   };
 
   const addRecipient = () => {
-    if (!user) {
+    if (!userProfile?.data) {
       return;
     }
 
@@ -141,10 +88,10 @@ function AddRecipient() {
       ...formData,
       amount: parseFloat(formData.amount).toFixed(2),
       endDate: new Date(formData.endDate),
-      customerFirstName: user.firstName || "",
-      customerLastName: user.lastName || "",
-      customerEmail: user.emailAddresses[0]?.emailAddress || "",
-      customerPhone: user.phoneNumbers[0]?.phoneNumber || "",
+      customerFirstName: userProfile.data.firstname || "",
+      customerLastName: userProfile.data.lastname || "",
+      customerEmail: userProfile.data.email || "",
+      customerPhone: userProfile.data.phone || "",
     });
 
     if (!success) {
@@ -152,18 +99,41 @@ function AddRecipient() {
       return;
     }
 
+    // if (!vpa) {
+    //   setVpaError("VPA cannot be empty.");
+    //   return;
+    // }
+
+    // setVpaError(null);
     setErrors(null);
 
-    postRecipient(data, {
-      onSuccess: async ({ data }) => {
-        payUFormRef.current!.innerHTML = data.form;
-        payUFormRef.current!.querySelector("form")?.submit();
-      },
-      onError: (err) => {
-        console.error("Error adding recipient:", err);
-        setErrors((err as APIError).data);
-      },
-    });
+    // verifyVpa(vpa, {
+    //   onSuccess: (res, vpa) => {
+    //     if (res.data.isVPAValid === 0) {
+    //       setVpaVerified(false);
+    //       setVpaError("Invalid VPA. Please check and try again.");
+    //       return;
+    //     }
+    //     setVpaVerified(true);
+    //     setVpaAccName(res.data.payerAccountName);
+    postRecipient(
+      { ...data, vpa },
+      {
+        onSuccess: async ({ data }) => {
+          payUFormRef.current!.innerHTML = data.form;
+          payUFormRef.current!.querySelector("form")?.submit();
+        },
+        onError: (err) => {
+          console.error("Error adding recipient:", err);
+          setErrors((err as APIError).data);
+          if ((err as APIError).errorCode === ErrorCode.InvalidVPA) {
+            setVpaError(err.message);
+          }
+        },
+      }
+    );
+    // },
+    // });
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -353,7 +323,7 @@ function AddRecipient() {
             plain
             onClick={close}
             className="cursor-pointer"
-            disabled={isAddingRecipient}
+            disabled={isAddingRecipient || isVerifyingVpa}
           >
             Cancel
           </Button>
@@ -361,9 +331,9 @@ function AddRecipient() {
             onClick={addRecipient}
             className="cursor-pointer"
             //disabled={isAddingRecipient || !vpaVerified || vpaError != null}
-            disabled={isAddingRecipient}
+            disabled={isAddingRecipient || isVerifyingVpa}
           >
-            {isAddingRecipient ? (
+            {isAddingRecipient || isVerifyingVpa ? (
               <ArrowPathIcon className="animate-spin" />
             ) : (
               "Setup AutoPay"

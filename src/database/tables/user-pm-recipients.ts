@@ -4,9 +4,10 @@ import { Recipients } from "./recipients";
 import { relations } from "drizzle-orm";
 import { Users } from "./users";
 
-// Users => UserPMRecipients => Recipients => PocketMoneys
+// Users => UserPMRecipients => Recipients => PocketMoneys => Transactions
 
 export const UserPMRecipients = pgTable("user_pm_recipients", {
+  userPMRecipientId: uuid("userPMRecipientId").primaryKey().defaultRandom(),
   userId: varchar("userId", { length: 255 })
     .notNull()
     .references(() => Users.userId),

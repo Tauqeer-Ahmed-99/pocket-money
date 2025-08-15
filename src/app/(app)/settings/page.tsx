@@ -2,81 +2,22 @@
 
 import { Button } from "@/components/button";
 import { Divider } from "@/components/divider";
+import { ErrorMessage, Field } from "@/components/fieldset";
 import { Heading, Subheading } from "@/components/heading";
 import { Input } from "@/components/input";
 import { Select } from "@/components/select";
-import { Text } from "@/components/text";
-import { useEffect, useState } from "react";
-import { Address } from "./address";
-import { ProfileSchema } from "@/models/zod";
-import z from "zod";
-import { APIError, APIResponse, APIStatus, ErrorCode } from "@/models/network";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ErrorMessage, Field } from "@/components/fieldset";
 import SetupProfileBanner from "@/components/setup-profile-banner";
-import { ArrowPathIcon } from "@heroicons/react/24/solid";
+import { Text } from "@/components/text";
+import useProfile from "@/hooks/useProfile";
+import useUpdateProfile from "@/hooks/useUpdateProfile";
+import { APIError, APIStatus, ErrorCode } from "@/models/network";
+import { ProfileSchema } from "@/models/zod";
 import { useUser } from "@clerk/nextjs";
-
-type UserProfile = {
-  firstname: string;
-  lastname: string;
-  email: string;
-  phone: string;
-  addressLine1: string;
-  addressLine2: string;
-  city: string;
-  postalCode: string;
-  region: string;
-  country: string;
-  userId: string;
-};
-
-const fetchProfileData = async () => {
-  const response = await fetch("/api/profile", {
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorData: APIResponse<ReturnType<
-      typeof z.treeifyError<z.infer<typeof ProfileSchema>>
-    > | null> = await response.json();
-    const error = new APIError(
-      errorData.message,
-      response.status,
-      errorData.data,
-      errorData.errorCode
-    );
-    throw error;
-  }
-
-  return response.json() as Promise<APIResponse<UserProfile>>;
-};
-
-const postProfileData = async (body: z.infer<typeof ProfileSchema>) => {
-  const response = await fetch("/api/profile", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok) {
-    const errorData: APIResponse<ReturnType<
-      typeof z.treeifyError<z.infer<typeof ProfileSchema>>
-    > | null> = await response.json();
-    const error = new APIError(
-      errorData.message,
-      response.status,
-      errorData.data
-    );
-    throw error;
-  }
-
-  return response.json() as Promise<APIResponse<UserProfile>>;
-};
+import { ArrowPathIcon } from "@heroicons/react/24/solid";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import z from "zod";
+import { Address } from "./address";
 
 export default function Settings() {
   const { user } = useUser();
@@ -97,15 +38,10 @@ export default function Settings() {
     typeof z.treeifyError<z.infer<typeof ProfileSchema>>
   > | null>(null);
 
-  const { data: userProfile, isLoading: isLoadingProfile } = useQuery({
-    queryKey: ["/api/profile"],
-    queryFn: fetchProfileData,
-  });
+  const { data: userProfile } = useProfile();
 
-  const { mutate: saveProfile, isPending: isSavingProfile } = useMutation({
-    mutationKey: ["/api/profile"],
-    mutationFn: postProfileData,
-  });
+  const { mutate: saveProfile, isPending: isSavingProfile } =
+    useUpdateProfile();
 
   const queryClient = useQueryClient();
 
@@ -178,8 +114,7 @@ export default function Settings() {
       country: userProfile?.data?.country,
     });
 
-  const isProfileNotSetup =
-    userProfile?.errorCode === ErrorCode.Profile_Not_Set;
+  const isProfileNotSetup = userProfile?.errorCode === ErrorCode.ProfileNotSet;
 
   return (
     <div className="mx-auto max-w-4xl">

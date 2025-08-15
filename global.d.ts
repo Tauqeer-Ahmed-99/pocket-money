@@ -16,7 +16,7 @@ declare module "payu-websdk" {
 
     paymentInitiate(params: InitiatePaymentParams): string;
 
-    async verifyPayment(txnid: string): Promise<unknown>;
+    async verifyPayment(txnid: string): Promise<VerifyPaymentResponse>;
 
     async validateVPA(vpa: string): Promise<ValidateVPAResponse>;
   }

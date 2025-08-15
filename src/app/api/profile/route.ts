@@ -1,4 +1,4 @@
-import UsersDAL from "@/database/access-layer/users";
+import UsersDAL from "@/database/access-layer/users-dal";
 import {
   APIResponse,
   APIStatus,
@@ -103,7 +103,7 @@ export const GET = async () => {
       message: userProfile
         ? "User profile retrieved successfully."
         : "User profile not found.",
-      errorCode: userProfile ? undefined : ErrorCode.Profile_Not_Set,
+      errorCode: userProfile ? undefined : ErrorCode.ProfileNotSet,
       data: userProfile,
     };
 

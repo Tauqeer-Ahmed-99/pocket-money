@@ -1,4 +1,9 @@
-import { APIResponse, APIStatus, HTTPStatus } from "@/models/network";
+import {
+  APIResponse,
+  APIStatus,
+  ErrorCode,
+  HTTPStatus,
+} from "@/models/network";
 import { NewRecipientSchema } from "@/models/zod";
 import PaymentService from "@/services/payments";
 import { auth } from "@clerk/nextjs/server";
@@ -22,13 +27,16 @@ export const POST = async (req: NextRequest) => {
 
     const body = await req.json();
 
+    const startDate = new Date();
+    const endDate = new Date(body.endDate);
+
     const {
       success,
       error,
       data: paymentDetails,
     } = NewRecipientSchema.safeParse({
       ...body,
-      endDate: new Date(body.endDate),
+      endDate,
     });
 
     if (!success) {
@@ -47,8 +55,36 @@ export const POST = async (req: NextRequest) => {
       });
     }
 
+    const { vpa } = body;
+
+    if (!vpa) {
+      const response: APIResponse<null> = {
+        status: APIStatus.Error,
+        statusCode: HTTPStatus.BadRequest,
+        message: "VPA is required.",
+        errorCode: ErrorCode.InvalidVPA,
+        data: null,
+      };
+
+      return NextResponse.json(response, { status: HTTPStatus.BadRequest });
+    }
+
+    // const { isVPAValid } = await PaymentService.validateVPA(vpa);
+
+    // if (isVPAValid === 0) {
+    //   const response: APIResponse<null> = {
+    //     status: APIStatus.Error,
+    //     statusCode: HTTPStatus.BadRequest,
+    //     message: "Invalid VPA. Please check and try again.",
+    //     errorCode: ErrorCode.InvalidVPA,
+    //     data: null,
+    //   };
+
+    //   return NextResponse.json(response, { status: HTTPStatus.BadRequest });
+    // }
+
     const { form } = await PaymentService.initiatePaymentForm(
-      paymentDetails,
+      { ...paymentDetails, vpa, startDate },
       userId
     );
 
