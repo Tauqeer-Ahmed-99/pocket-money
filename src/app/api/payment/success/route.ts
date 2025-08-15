@@ -1,26 +1,8 @@
 import { Transactions } from "@/database/schema";
-import {
-  APIResponse,
-  APIStatus,
-  ErrorCode,
-  HTTPStatus,
-} from "@/models/network";
-import { NewRecipientSchema } from "@/models/zod";
+import { APIResponse, APIStatus, HTTPStatus } from "@/models/network";
 import PaymentService from "@/services/payments";
-import TransactionsService from "@/services/transactions";
 import { InferInsertModel } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
-import z from "zod";
-
-if (!process.env.NEXT_APP_URL) {
-  throw new Error("NEXT_APP_URL is not defined in the environment variables.");
-}
-
-const APP_URL = process.env.NEXT_APP_URL!;
-
-if (!APP_URL) {
-  throw new Error("NEXT_APP_URL ");
-}
 
 export const POST = async (req: NextRequest) => {
   try {
