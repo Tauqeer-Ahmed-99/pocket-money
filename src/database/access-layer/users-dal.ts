@@ -1,6 +1,6 @@
-import { InferSelectModel } from "drizzle-orm";
+import { InferModelFromColumns, InferSelectModel } from "drizzle-orm";
 import database from "..";
-import { Users } from "../schema";
+import { Recipients, UserPMRecipients, Users } from "../schema";
 
 class UsersDAL {
   static getUserProfile = async (
@@ -21,6 +21,30 @@ class UsersDAL {
       .returning();
 
     return userProfile;
+  };
+
+  static getUserWithPMRecipients = async (
+    userId: string
+  ): Promise<
+    | (InferSelectModel<typeof Users> & {
+        userPocketMoneyRecipients: Array<
+          InferSelectModel<typeof UserPMRecipients> & {
+            recipient: InferSelectModel<typeof Recipients>;
+          }
+        >;
+      })
+    | undefined
+  > => {
+    return database.query.Users.findFirst({
+      where: (columns, { eq }) => eq(columns.userId, userId),
+      with: {
+        userPocketMoneyRecipients: {
+          with: {
+            recipient: true,
+          },
+        },
+      },
+    });
   };
 }
 

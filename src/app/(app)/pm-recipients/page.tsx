@@ -12,6 +12,7 @@ import { Input, InputGroup } from "@/components/input";
 import { Link } from "@/components/link";
 import { Select } from "@/components/select";
 import SetupProfileBanner from "@/components/setup-profile-banner";
+import { Text } from "@/components/text";
 import { getEvents } from "@/data";
 import UsersService from "@/services/users";
 import { currentUser } from "@clerk/nextjs/server";
@@ -34,7 +35,7 @@ export default async function Events() {
     return <div>Please log in to view your dashboard.</div>;
   }
 
-  const userProfile = await UsersService.getUserProfile(user.id);
+  const userProfile = await UsersService.getUserWithPMRecipients(user.id);
 
   const isProfileNotSetup = !Boolean(userProfile);
 
@@ -62,49 +63,48 @@ export default async function Events() {
         </div>
         <AddRecipient />
       </div>
+
+      {isProfileNotSetup && (
+        <Text>
+          Please set up your profile to manage your Pocket Money recipients.
+        </Text>
+      )}
+
       <ul className="mt-10">
-        {events.map((event, index) => (
-          <li key={event.id}>
+        {userProfile?.userPocketMoneyRecipients.map((recipient, index) => (
+          <li key={recipient.recipientId}>
             <Divider soft={index > 0} />
             <div className="flex items-center justify-between">
-              <div key={event.id} className="flex gap-6 py-6">
-                <div className="w-32 shrink-0">
-                  <Link href={event.url} aria-hidden="true">
-                    <img
-                      className="aspect-3/2 rounded-lg shadow-sm"
-                      src={event.imgUrl}
-                      alt=""
-                    />
-                  </Link>
-                </div>
+              <div key={recipient.recipientId} className="flex gap-6 py-6">
                 <div className="space-y-1.5">
                   <div className="text-base/6 font-semibold">
-                    <Link href={event.url}>{event.name}</Link>
+                    <Link href={`/pm-recipients/${recipient.recipientId}`}>
+                      {recipient.recipient.firstname}{" "}
+                      {recipient.recipient.lastname}
+                    </Link>
                   </div>
                   <div className="text-xs/6 text-zinc-500">
-                    {event.date} at {event.time}{" "}
-                    <span aria-hidden="true">·</span> {event.location}
-                  </div>
-                  <div className="text-xs/6 text-zinc-600">
-                    {event.ticketsSold}/{event.ticketsAvailable} tickets sold
+                    Started at {recipient.recipient.createdAt?.toDateString()}
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <Badge
+                {/* <Badge
                   className="max-sm:hidden"
                   color={event.status === "On Sale" ? "lime" : "zinc"}
                 >
                   {event.status}
-                </Badge>
+                </Badge> */}
                 <Dropdown>
                   <DropdownButton plain aria-label="More options">
                     <EllipsisVerticalIcon />
                   </DropdownButton>
                   <DropdownMenu anchor="bottom end">
-                    <DropdownItem href={event.url}>View</DropdownItem>
-                    <DropdownItem>Edit</DropdownItem>
-                    <DropdownItem>Delete</DropdownItem>
+                    <DropdownItem
+                      href={`/pm-recipients/${recipient.recipientId}`}
+                    >
+                      View
+                    </DropdownItem>
                   </DropdownMenu>
                 </Dropdown>
               </div>

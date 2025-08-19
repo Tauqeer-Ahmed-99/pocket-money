@@ -1,5 +1,5 @@
 import UsersDAL from "@/database/access-layer/users-dal";
-import { Users } from "@/database/schema";
+import { Recipients, UserPMRecipients, Users } from "@/database/schema";
 import { InferSelectModel } from "drizzle-orm";
 
 class UsersService {
@@ -12,6 +12,21 @@ class UsersService {
     profileData: Omit<InferSelectModel<typeof Users>, "userId">
   ) => {
     return UsersDAL.setupUserProfile(userId, profileData);
+  };
+
+  static getUserWithPMRecipients = (
+    userId: string
+  ): Promise<
+    | (InferSelectModel<typeof Users> & {
+        userPocketMoneyRecipients: Array<
+          InferSelectModel<typeof UserPMRecipients> & {
+            recipient: InferSelectModel<typeof Recipients>;
+          }
+        >;
+      })
+    | undefined
+  > => {
+    return UsersDAL.getUserWithPMRecipients(userId);
   };
 }
 

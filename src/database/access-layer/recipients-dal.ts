@@ -1,4 +1,4 @@
-import { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { Recipients } from "../tables/recipients";
 import database from "..";
 import { PocketMoneys, Transactions, UserPMRecipients } from "../schema";
@@ -70,8 +70,20 @@ class RecipientsDAL {
     });
   };
 
-  static getRecipientById = async (id: string) => {
-    // Implementation for fetching a recipient by ID
+  static getRecipient = async (
+    recipientId: string
+  ): Promise<
+    | (InferSelectModel<typeof Recipients> & {
+        pocketMoneys: InferSelectModel<typeof PocketMoneys>[];
+      })
+    | undefined
+  > => {
+    return database.query.Recipients.findFirst({
+      where: eq(Recipients.recipientId, recipientId),
+      with: {
+        pocketMoneys: true,
+      },
+    });
   };
 
   static updateRecipient = async (id: string, data: any) => {
